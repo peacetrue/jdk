@@ -138,16 +138,19 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
 
     @Override
     public MethodTypeDesc changeReturnType(ClassDesc returnType) {
+        Objects.requireNonNull(returnType);
+
         return new MethodTypeDescImpl(returnType, argTypes);
     }
 
     @Override
     public MethodTypeDesc changeParameterType(int index, ClassDesc paramType) {
         Objects.checkIndex(index, argTypes.size());
+        Objects.requireNonNull(paramType);
 
-        ClassDesc[] newArgs = argTypes.toArray(EMPTY_CLASSDESC);
+        Object[] newArgs = argTypes.toArray();
         newArgs[index] = paramType;
-        return MethodTypeDesc.of(returnType, newArgs); // must be revalidated, nulls etc.
+        return new MethodTypeDescImpl(returnType, JUCA.listFromTrustedArray(newArgs));
     }
 
     @Override
@@ -159,18 +162,18 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
         Object[] newArgs = new Object[argTypes.length - (end - start)];
         System.arraycopy(argTypes, 0, newArgs, 0, start);
         System.arraycopy(argTypes, end, newArgs, start, argTypes.length - end);
-        return new MethodTypeDescImpl(returnType, JUCA.listFromTrustedArray(newArgs)); // can skip revalidation
+        return new MethodTypeDescImpl(returnType, JUCA.listFromTrustedArray(newArgs));
     }
 
     @Override
     public MethodTypeDesc insertParameterTypes(int pos, ClassDesc... paramTypes) {
         Objects.checkIndex(pos, argTypes.size() + 1);
+        if (paramTypes.length == 0) return this; // Implicit null check
 
-        ClassDesc[] newArgs = argTypes.toArray(new ClassDesc[argTypes.size() + paramTypes.length]);
+        Object[] newArgs = argTypes.toArray(new Object[argTypes.size() + paramTypes.length]);
         System.arraycopy(newArgs, pos, newArgs, pos + paramTypes.length, argTypes.size() - pos);
         System.arraycopy(paramTypes, 0, newArgs, pos, paramTypes.length);
-
-        return MethodTypeDesc.of(returnType, newArgs); // must be revalidated, nulls etc.
+        return new MethodTypeDescImpl(returnType, JUCA.listFromTrustedArray(newArgs));
     }
 
     @Override
