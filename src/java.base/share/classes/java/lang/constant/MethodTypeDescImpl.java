@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,14 +24,18 @@
  */
 package java.lang.constant;
 
+import jdk.internal.access.JavaUtilCollectionAccess;
+import jdk.internal.access.SharedSecrets;
+
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import static java.lang.constant.ConstantUtils.*;
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -40,23 +44,26 @@ import static java.util.Objects.requireNonNull;
  * {@code Constant_MethodType_info} entry in the constant pool of a classfile.
  */
 final class MethodTypeDescImpl implements MethodTypeDesc {
+    private static final JavaUtilCollectionAccess JUCA = SharedSecrets.getJavaUtilCollectionAccess();
+
     private final ClassDesc returnType;
-    private final ClassDesc[] argTypes;
+    private final List<ClassDesc> argTypes;
 
     /**
      * Constructs a {@linkplain MethodTypeDesc} with the specified return type
      * and parameter types
      *
      * @param returnType a {@link ClassDesc} describing the return type
-     * @param argTypes {@link ClassDesc}s describing the parameter types
+     * @param trustedArgTypes trusted list of {@link ClassDesc}s describing the parameter types
      */
-    MethodTypeDescImpl(ClassDesc returnType, ClassDesc[] argTypes) {
+    MethodTypeDescImpl(ClassDesc returnType, List<ClassDesc> trustedArgTypes) {
         this.returnType = requireNonNull(returnType);
-        this.argTypes = requireNonNull(argTypes);
+        this.argTypes = requireNonNull(trustedArgTypes);
 
-        for (ClassDesc cr : argTypes)
+        for (ClassDesc cr : trustedArgTypes) {
             if (cr.isPrimitive() && cr.descriptorString().equals("V"))
                 throw new IllegalArgumentException("Void parameters not permitted");
+        }
     }
 
     /**
@@ -69,10 +76,39 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
      * @jvms 4.3.3 Method Descriptors
      */
     static MethodTypeDescImpl ofDescriptor(String descriptor) {
-        requireNonNull(descriptor);
-        List<String> types = ConstantUtils.parseMethodDescriptor(descriptor);
-        ClassDesc[] paramTypes = types.stream().skip(1).map(ClassDesc::ofDescriptor).toArray(ClassDesc[]::new);
-        return new MethodTypeDescImpl(ClassDesc.ofDescriptor(types.get(0)), paramTypes);
+        int cur = 0, end = descriptor.length(); // implicit null check
+
+        if (end == 0 || descriptor.charAt(0) != '(')
+            throw new IllegalArgumentException("Bad method descriptor: " + descriptor);
+        cur++; // skip '('
+        if (cur >= end) {
+            throw new IllegalArgumentException("Bad method descriptor: " + descriptor);
+        }
+        ArrayList<ClassDesc> ptypes;
+        if (descriptor.charAt(cur) != ')') {
+            ptypes = new ArrayList<>();
+            do {
+                int len = skipOverFieldSignature(descriptor, cur, end, false);
+                if (len == 0)
+                    throw new IllegalArgumentException("Bad method descriptor: " + descriptor);
+                ptypes.add(ClassDesc.ofDescriptor(descriptor.substring(cur, cur + len)));
+                cur += len;
+                if (cur >= end) {
+                    throw new IllegalArgumentException("Bad method descriptor: " + descriptor);
+                }
+            } while (descriptor.charAt(cur) != ')');
+        } else {
+            ptypes = null;
+        }
+        cur++; // skip ')'
+
+        int rLen = skipOverFieldSignature(descriptor, cur, end, true);
+        if (rLen == 0 || cur + rLen != descriptor.length())
+            throw new IllegalArgumentException("Bad method descriptor: " + descriptor);
+
+        ClassDesc retType = ClassDesc.ofDescriptor(descriptor.substring(cur));
+        List<ClassDesc> types = ptypes == null ? List.of() : JUCA.listFromTrustedArray(ptypes.toArray());
+        return new MethodTypeDescImpl(retType, types);
     }
 
     @Override
@@ -82,56 +118,59 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
 
     @Override
     public int parameterCount() {
-        return argTypes.length;
+        return argTypes.size();
     }
 
     @Override
     public ClassDesc parameterType(int index) {
-        return argTypes[index];
+        return argTypes.get(index);
     }
 
     @Override
     public List<ClassDesc> parameterList() {
-        return List.of(argTypes);
+        return argTypes;
     }
 
     @Override
     public ClassDesc[] parameterArray() {
-        return argTypes.clone();
+        return argTypes.toArray(EMPTY_CLASSDESC);
     }
 
     @Override
     public MethodTypeDesc changeReturnType(ClassDesc returnType) {
-        return MethodTypeDesc.of(returnType, argTypes);
+        return new MethodTypeDescImpl(returnType, argTypes);
     }
 
     @Override
     public MethodTypeDesc changeParameterType(int index, ClassDesc paramType) {
-        ClassDesc[] newArgs = argTypes.clone();
+        Objects.checkIndex(index, argTypes.size());
+
+        ClassDesc[] newArgs = argTypes.toArray(EMPTY_CLASSDESC);
         newArgs[index] = paramType;
-        return MethodTypeDesc.of(returnType, newArgs);
+        return MethodTypeDesc.of(returnType, newArgs); // must be revalidated, nulls etc.
     }
 
     @Override
     public MethodTypeDesc dropParameterTypes(int start, int end) {
-        Objects.checkIndex(start, argTypes.length);
-        Objects.checkFromToIndex(start, end, argTypes.length);
+        Objects.checkFromToIndex(start, end, argTypes.size());
+        if (start == end) return this;
 
-        ClassDesc[] newArgs = new ClassDesc[argTypes.length - (end - start)];
+        ClassDesc[] argTypes = this.argTypes.toArray(EMPTY_CLASSDESC);
+        Object[] newArgs = new Object[argTypes.length - (end - start)];
         System.arraycopy(argTypes, 0, newArgs, 0, start);
         System.arraycopy(argTypes, end, newArgs, start, argTypes.length - end);
-        return MethodTypeDesc.of(returnType, newArgs);
+        return new MethodTypeDescImpl(returnType, JUCA.listFromTrustedArray(newArgs)); // can skip revalidation
     }
 
     @Override
     public MethodTypeDesc insertParameterTypes(int pos, ClassDesc... paramTypes) {
-        if (pos < 0 || pos > argTypes.length)
-            throw new IndexOutOfBoundsException(pos);
-        ClassDesc[] newArgs = new ClassDesc[argTypes.length + paramTypes.length];
-        System.arraycopy(argTypes, 0, newArgs, 0, pos);
+        Objects.checkIndex(pos, argTypes.size() + 1);
+
+        ClassDesc[] newArgs = argTypes.toArray(new ClassDesc[argTypes.size() + paramTypes.length]);
+        System.arraycopy(newArgs, pos, newArgs, pos + paramTypes.length, argTypes.size() - pos);
         System.arraycopy(paramTypes, 0, newArgs, pos, paramTypes.length);
-        System.arraycopy(argTypes, pos, newArgs, pos+paramTypes.length, argTypes.length - pos);
-        return MethodTypeDesc.of(returnType, newArgs);
+
+        return MethodTypeDesc.of(returnType, newArgs); // must be revalidated, nulls etc.
     }
 
     @Override
@@ -172,13 +211,13 @@ final class MethodTypeDescImpl implements MethodTypeDesc {
         MethodTypeDescImpl constant = (MethodTypeDescImpl) o;
 
         return returnType.equals(constant.returnType)
-               && Arrays.equals(argTypes, constant.argTypes);
+               && Objects.equals(argTypes, constant.argTypes);
     }
 
     @Override
     public int hashCode() {
         int result = returnType.hashCode();
-        result = 31 * result + Arrays.hashCode(argTypes);
+        result = 31 * result + Objects.hashCode(argTypes);
         return result;
     }
 

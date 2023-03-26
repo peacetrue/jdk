@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,6 @@
  */
 package java.lang.constant;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
@@ -36,6 +34,7 @@ import static java.util.Objects.requireNonNull;
 class ConstantUtils {
     /** an empty constant descriptor */
     public static final ConstantDesc[] EMPTY_CONSTANTDESC = new ConstantDesc[0];
+    public static final ClassDesc[] EMPTY_CLASSDESC = new ClassDesc[0];
     static final Constable[] EMPTY_CONSTABLE = new Constable[0];
     static final int MAX_ARRAY_TYPE_DESC_DIMENSIONS = 255;
 
@@ -124,41 +123,6 @@ class ConstantUtils {
 
     static String dropFirstAndLastChar(String s) {
         return s.substring(1, s.length() - 1);
-    }
-
-    /**
-     * Parses a method descriptor string, and return a list of field descriptor
-     * strings, return type first, then parameter types
-     *
-     * @param descriptor the descriptor string
-     * @return the list of types
-     * @throws IllegalArgumentException if the descriptor string is not valid
-     */
-    static List<String> parseMethodDescriptor(String descriptor) {
-        int cur = 0, end = descriptor.length();
-        ArrayList<String> ptypes = new ArrayList<>();
-        ptypes.add(null); //placeholder for return type
-
-        if (cur >= end || descriptor.charAt(cur) != '(')
-            throw new IllegalArgumentException("Bad method descriptor: " + descriptor);
-
-        ++cur;  // skip '('
-        while (cur < end && descriptor.charAt(cur) != ')') {
-            int len = skipOverFieldSignature(descriptor, cur, end, false);
-            if (len == 0)
-                throw new IllegalArgumentException("Bad method descriptor: " + descriptor);
-            ptypes.add(descriptor.substring(cur, cur + len));
-            cur += len;
-        }
-        if (cur >= end)
-            throw new IllegalArgumentException("Bad method descriptor: " + descriptor);
-        ++cur;  // skip ')'
-
-        int rLen = skipOverFieldSignature(descriptor, cur, end, true);
-        if (rLen == 0 || cur + rLen != end)
-            throw new IllegalArgumentException("Bad method descriptor: " + descriptor);
-        ptypes.set(0, descriptor.substring(cur, cur + rLen));
-        return ptypes;
     }
 
     private static final char JVM_SIGNATURE_ARRAY = '[';

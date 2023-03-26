@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -66,7 +66,7 @@ public sealed interface MethodTypeDesc
      * {@link ClassDesc} for {@code void}
      */
     static MethodTypeDesc of(ClassDesc returnDesc, ClassDesc... paramDescs) {
-        return new MethodTypeDescImpl(returnDesc, paramDescs);
+        return new MethodTypeDescImpl(returnDesc, List.of(paramDescs));
     }
 
     /**
