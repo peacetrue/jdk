@@ -1,0 +1,131 @@
+= 构建 JDK
+:app-name: jdk
+
+image:https://img.shields.io/github/actions/workflow/status/peacetrue/{app-name}/macOS.yml?branch=master[GitHub Workflow Status (with branch),link="https://github.com/peacetrue/{app-name}/actions"]
+
+在 macOS 上构建 JDK 17。
+
+== 环境
+
+. macOS：13.2.1
+. XCode：14.2
+. 源码： https://github.com/peacetrue/jdk
+
+https://github.com/peacetrue/jdk 是从 https://github.com/openjdk/jdk fork 出的，自定义一个 jdk-17+35-mac 的分支，用于处理构建中出现的问题。
+// git checkout -b jdk-17+35-mac jdk-17+35
+
+== 检出源码
+
+检出源码并切换到分支 jdk-17+35-mac：
+
+[source%nowrap,bash]
+----
+git checkout https://github.com/peacetrue/jdk -b jdk-17+35-mac
+----
+
+== 准备 Boot JDK 17
+
+[source%nowrap,bash]
+----
+java -version
+#java version "17.0.4" 2022-07-19 LTS
+#Java(TM) SE Runtime Environment (build 17.0.4+11-LTS-179)
+#Java HotSpot(TM) 64-Bit Server VM (build 17.0.4+11-LTS-179, mixed mode, sharing)
+----
+
+== 生成构建配置
+
+[source%nowrap,bash]
+----
+bash configure --enable-debug --with-jvm-variants=server --disable-warnings-as-errors
+
+#    ====================================================
+#    A new configuration has been successfully created in
+#    /Users/xiayx/Documents/Github/peacetrue/jdk/build/macosx-x86_64-server-fastdebug
+#    using configure arguments '--enable-debug --with-jvm-variants=server --disable-warnings-as-errors'.
+#
+#    Configuration summary:
+#    * Name:           macosx-x86_64-server-fastdebug
+#    * Debug level:    fastdebug
+#    * HS debug level: fastdebug
+#    * JVM variants:   server
+#    * JVM features:   server: 'cds compiler1 compiler2 dtrace epsilongc g1gc jfr jni-check jvmci jvmti management nmt parallelgc serialgc services shenandoahgc vm-structs zgc'
+#    * OpenJDK target: OS: macosx, CPU architecture: x86, address length: 64
+#    * Version string: 17-internal+0-adhoc.xiayx.jdk (17-internal)
+#
+#    Tools summary:
+#    * Boot JDK:       java version "17.0.4" 2022-07-19 LTS Java(TM) SE Runtime Environment (build 17.0.4+11-LTS-179) Java HotSpot(TM) 64-Bit Server VM (build 17.0.4+11-LTS-179, mixed mode, sharing) (at /Library/Java/JavaVirtualMachines/jdk-17.0.4.jdk/Contents/Home)
+#    * Toolchain:      clang (clang/LLVM from Xcode 14.2)
+#    * C Compiler:     Version 14.0.0 (at /usr/bin/clang)
+#    * C++ Compiler:   Version 14.0.0 (at /usr/bin/clang++)
+#
+#    Build performance summary:
+#    * Cores to use:   16
+#    * Memory limit:   65536 MB
+----
+
+== 构建镜像
+
+[source%nowrap,bash]
+----
+make images
+----
+
+=== 排除故障
+
+=== DMAC_OS_X_VERSION_MIN_REQUIRED
+
+问题描述::
+error: invalid integral value '16-DMAC_OS_X_VERSION_MIN_REQUIRED=10120' in '-mstack-alignment=16-DMAC_OS_X_VERSION_MIN_REQUIRED=10120'
+问题答案::
+. -mstack-alignment=16-DMAC_OS_X_VERSION_MIN_REQUIRED=10120
+. -mstack-alignment=16 -DMAC_OS_X_VERSION_MIN_REQUIRED=10120
+. https://bugs.openjdk.org/browse/JDK-8272700
+. flags-cflags.m4
+. flags-other.m4
+
+== 验证
+
+[source%nowrap,bash]
+----
+./build/*/images/jdk/bin/java -version
+
+#    openjdk version "17-internal" 2021-09-14
+#    OpenJDK Runtime Environment (fastdebug build 17-internal+0-adhoc.xiayx.jdk)
+#    OpenJDK 64-Bit Server VM (fastdebug build 17-internal+0-adhoc.xiayx.jdk, mixed mode, sharing)
+----
+
+== 测试
+
+[source%nowrap,bash]
+----
+make run-test-tier1
+#   Error: jtreg framework is not found.
+----
+
+== 联调
+
+* jdk 源码的入口位于：
+.. java_md_macosx.m
+.. java.c：int JNICALL JavaMain(void * _args)
+* 在 IDEA 中运行以下代码：
+
+[source%nowrap,java]
+----
+public class Main {
+    public static void main(String[] args) {
+        while (true) {
+            System.out.println("hello");
+            java.util.concurrent.locks.LockSupport.parkNanos(1_000_000_000);
+        }
+    }
+}
+----
+
+* 在 CLion 中的 park 方法（unsafe.cpp：Unsafe_Park）上断点
+* Attach 到 Debug 中的 Java 进程
+
+== 直接运行
+
+. 以 Cmake 重新打开项目
+. 修改 Configuration 配置，执行 Java 命令
