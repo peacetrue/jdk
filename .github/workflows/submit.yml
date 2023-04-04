@@ -5,6 +5,7 @@ on:
     branches-ignore:
       - master
       - pr/*
+      - jdk-17+35-mac
   workflow_dispatch:
     inputs:
       platforms:

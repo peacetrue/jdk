@@ -20,7 +20,7 @@ https://github.com/peacetrue/jdk 是从 https://github.com/openjdk/jdk fork 出�
 
 [source%nowrap,bash]
 ----
-git checkout https://github.com/peacetrue/jdk -b jdk-17+35-mac
+git clone https://github.com/peacetrue/jdk -b jdk-17+35-mac
 ----
 
 == 准备 Boot JDK 17
