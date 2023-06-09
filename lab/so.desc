@@ -1,0 +1,24 @@
+java                  22K
+libjvm.so             236M  Java 虚拟机
+libc.so.6             2.2M  C 库
+libjava.so            1.1M  JRE 库
+libjimage.so          278K  Java 平台模块系统
+libm.so.6             919K  GNU C 数学库（math library）
+libz.so.1.2.11        107K  开源的数据压缩库
+libjli.so             202K  Java Launcher Infrastructure，启动和加载 Java 应用程序
+ld-linux-x86-64.so.2  236K  动态链接库
+linux-vdso.so.1       0K    Virtual Dynamic Shared Object，它允许用户空间的程序直接访问内核空间的一些功能，而无需通过系统调用的方式
+
+classes.jsa           14M   classes.jsa 是一个预编译的类文件存档（Archive），其中包含了 Java 核心库（JDK）的类和方法的字节码。这个文件主要用于提高 Java 应用程序的启动和执行性能
+java                  15K
+modules               123M  模块系统
+libstdc++.so.6.0.30   2.2M
+libjvm.so             24M
+libc.so.6             2.2M
+libjava.so            190K
+libgcc_s.so.1         123K
+libm.so.6             919K
+libz.so.1.2.11        107K
+libjimage.so          39K
+libjli.so             72K
+ld-linux-x86-64.so.2  236K

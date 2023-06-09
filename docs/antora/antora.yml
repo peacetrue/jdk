@@ -1,0 +1,12 @@
+name: jdk
+title: 学习 JDK 源码
+version: master
+asciidoc:
+  attributes:
+    numbered: '@'
+    website: https://peacetrue.github.io
+    app-group: com.github.peacetrue
+    app-name: jdk
+start_page: ROOT:index.adoc
+nav:
+  - modules/ROOT/nav.adoc

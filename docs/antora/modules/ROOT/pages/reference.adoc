@@ -1,0 +1,278 @@
+= 参考指南
+:app-name: jdk
+
+image:https://img.shields.io/github/actions/workflow/status/peacetrue/{app-name}/macOS.yml?branch=master[GitHub Workflow Status (with branch),link="https://github.com/peacetrue/{app-name}/actions"]
+
+在 macOS 上构建 JDK 17。
+
+== 环境
+
+. macOS：13.2.1
+. XCode：14.2
+. 源码： https://github.com/peacetrue/jdk
+
+https://github.com/peacetrue/jdk 是从 https://github.com/openjdk/jdk fork 出的，自定义一个 jdk-17+35-mac 的分支，用于处理构建中出现的问题。
+// git checkout -b jdk-17+35-mac jdk-17+35
+
+== 检出源码
+
+检出源码并切换到分支 jdk-17+35-mac：
+
+[source%nowrap,bash]
+----
+git clone https://github.com/peacetrue/jdk -b jdk-17+35-mac
+----
+
+== 准备 Boot JDK 17
+
+[source%nowrap,bash]
+----
+java -version
+#java version "17.0.4" 2022-07-19 LTS
+#Java(TM) SE Runtime Environment (build 17.0.4+11-LTS-179)
+#Java HotSpot(TM) 64-Bit Server VM (build 17.0.4+11-LTS-179, mixed mode, sharing)
+----
+
+== 生成构建配置
+
+[source%nowrap,bash]
+----
+bash configure --enable-debug --with-jvm-variants=server --disable-warnings-as-errors
+
+#    ====================================================
+#    A new configuration has been successfully created in
+#    /Users/xiayx/Documents/Github/peacetrue/jdk/build/macosx-x86_64-server-fastdebug
+#    using configure arguments '--enable-debug --with-jvm-variants=server --disable-warnings-as-errors'.
+#
+#    Configuration summary:
+#    * Name:           macosx-x86_64-server-fastdebug
+#    * Debug level:    fastdebug
+#    * HS debug level: fastdebug
+#    * JVM variants:   server
+#    * JVM features:   server: 'cds compiler1 compiler2 dtrace epsilongc g1gc jfr jni-check jvmci jvmti management nmt parallelgc serialgc services shenandoahgc vm-structs zgc'
+#    * OpenJDK target: OS: macosx, CPU architecture: x86, address length: 64
+#    * Version string: 17-internal+0-adhoc.xiayx.jdk (17-internal)
+#
+#    Tools summary:
+#    * Boot JDK:       java version "17.0.4" 2022-07-19 LTS Java(TM) SE Runtime Environment (build 17.0.4+11-LTS-179) Java HotSpot(TM) 64-Bit Server VM (build 17.0.4+11-LTS-179, mixed mode, sharing) (at /Library/Java/JavaVirtualMachines/jdk-17.0.4.jdk/Contents/Home)
+#    * Toolchain:      clang (clang/LLVM from Xcode 14.2)
+#    * C Compiler:     Version 14.0.0 (at /usr/bin/clang)
+#    * C++ Compiler:   Version 14.0.0 (at /usr/bin/clang++)
+#
+#    Build performance summary:
+#    * Cores to use:   16
+#    * Memory limit:   65536 MB
+----
+
+== 构建镜像
+
+[source%nowrap,bash]
+----
+make images
+----
+
+=== 排除故障
+
+=== DMAC_OS_X_VERSION_MIN_REQUIRED
+
+问题描述::
+error: invalid integral value '16-DMAC_OS_X_VERSION_MIN_REQUIRED=10120' in '-mstack-alignment=16-DMAC_OS_X_VERSION_MIN_REQUIRED=10120'
+问题答案::
+. -mstack-alignment=16-DMAC_OS_X_VERSION_MIN_REQUIRED=10120
+. -mstack-alignment=16 -DMAC_OS_X_VERSION_MIN_REQUIRED=10120
+. https://bugs.openjdk.org/browse/JDK-8272700
+. flags-cflags.m4
+. flags-other.m4
+
+== 验证
+
+[source%nowrap,bash]
+----
+./build/*/images/jdk/bin/java -version
+
+#    openjdk version "17-internal" 2021-09-14
+#    OpenJDK Runtime Environment (fastdebug build 17-internal+0-adhoc.xiayx.jdk)
+#    OpenJDK 64-Bit Server VM (fastdebug build 17-internal+0-adhoc.xiayx.jdk, mixed mode, sharing)
+----
+
+== 测试
+
+[source%nowrap,bash]
+----
+make run-test-tier1
+#   Error: jtreg framework is not found.
+----
+
+== 联调
+
+* jdk 源码的入口位于：
+.. java_md_macosx.m
+.. java.c：int JNICALL JavaMain(void * _args)
+* 在 IDEA 中运行以下代码：
+
+[source%nowrap,java]
+----
+public class Main {
+    public static void main(String[] args) {
+        while (true) {
+            System.out.println("hello");
+            java.util.concurrent.locks.LockSupport.parkNanos(1_000_000_000);
+        }
+    }
+}
+----
+
+* 在 CLion 中的 park 方法（unsafe.cpp：Unsafe_Park）上断点
+* Attach 到 Debug 中的 Java 进程
+
+== 直接运行
+
+. 以 Cmake 重新打开项目
+. 修改 Configuration 配置，执行 Java 命令
+
+== 调试 JVM
+
+.编译
+[source%nowrap,bash]
+----
+# macOS
+# 使用 TemplateInterpreter
+bash configure --disable-warnings-as-errors --with-debug-level=slowdebug --with-jvm-variants=server --with-native-debug-symbols=internal
+make images CONF=macosx-x86_64-server-slowdebug
+echo "alias sjava=`pwd`/build/macosx-x86_64-server-slowdebug/jdk/bin/java" >> ~/.zshrc
+# 使用 CppInterpreter
+bash configure --disable-warnings-as-errors --with-debug-level=slowdebug --with-jvm-variants=zero --with-native-debug-symbols=internal
+make images CONF=macosx-x86_64-zero-slowdebug
+echo "alias zjava=`pwd`/build/macosx-x86_64-zero-slowdebug/jdk/bin/java" >> ~/.zshrc
+
+# ubuntu
+# 关联共享内容
+ln -s /media/sf_jdk/lab lab
+ln -s /media/sf_jdk/README.adoc README.adoc
+# 使用 TemplateInterpreter
+bash configure --disable-warnings-as-errors --with-debug-level=slowdebug --with-jvm-variants=server --with-native-debug-symbols=internal
+make images CONF=linux-x86_64-server-slowdebug
+echo 'export sjavap=/root/jdk/build/linux-x86_64-server-slowdebug/jdk/bin/java' >> ~/.bashrc
+echo "alias sjava=$sjavap" >> ~/.bashrc
+# 使用 CppInterpreter
+bash configure --disable-warnings-as-errors --with-debug-level=slowdebug --with-jvm-variants=zero --with-native-debug-symbols=internal
+make images CONF=linux-x86_64-zero-slowdebug
+echo "export zjavap=/root/jdk/build/linux-x86_64-zero-slowdebug/jdk/bin/java" >> ~/.bashrc
+echo "alias zjava=$zjavap" >> ~/.bashrc
+#echo 'export JAVA_HOME="/root/jdk/build/linux-x86_64-server-slowdebug/jdk"' >> ~/.bashrc
+#echo 'export PATH="$JAVA_HOME/bin:$PATH"' >> ~/.bashrc
+
+# 编译 hsdis：HotSpot Disassembler 反汇编器
+git clone git://sourceware.org/git/binutils-gdb.git -b users/roland/2.31/gold-narrowing-switch
+cd src/utils/hsdis
+make all64 BINUTILS=/Users/xiayx/Documents/sourceware/binutils-gdb
+touch /Users/xiayx/Documents/sourceware/binutils-gdb/bfd/doc/bfd.info
+cp src/utils/hsdis/build/macosx-amd64/hsdis-amd64.dylib build/macosx-x86_64-server-slowdebug/jdk/lib/server
+cp src/utils/hsdis/build/macosx-amd64/hsdis-amd64.dylib build/macosx-x86_64-zero-slowdebug/jdk/lib/server
+
+make all64 BINUTILS=/media/sf_binutils-gdb
+touch /media/sf_binutils-gdb/bfd/doc/bfd.info
+cp src/utils/hsdis/build/linux-amd64/hsdis-amd64.so build/linux-x86_64-zero-slowdebug/jdk/lib/server
+cp src/utils/hsdis/build/linux-amd64/hsdis-amd64.so build/linux-x86_64-server-slowdebug/jdk/lib/server
+----
+
+.调试
+[source%nowrap,bash]
+----
+cd lab
+# lldb 调试 jvm
+make lldb
+# b _start  1.1: where = java`_start, address = 0x00005555555551e0, resolved, hit count = 1
+run
+# x/16g $rsp
+# p (char*)0x00007fffffffe513
+# x/16g $rsi
+# p (char*)0x00007fffffffe513
+# image lookup -a
+
+run -Xms100M -Xmx100M
+run HelloWorld
+run -XX:+PrintInterpreter HelloWorld
+
+ldd $sjavap >> java.ldd
+ldd /root/jdk/build/linux-x86_64-server-slowdebug/jdk/bin/../lib/libjli.so >> java.ldd
+
+./java -XX:+CountBytecodes HelloWorld
+./java -XX:+PrintBytecodeHistogram HelloWorld
+./java -XX:+TraceBytecodes HelloWorld | less
+./java -XX:+PrintInterpreter  HelloWorld
+
+# export LD_LIBRARY_PATH=/Users/xiayx/Documents/Github/peacetrue/jdk/src/utils/hsdis/build/macosx-amd64/hsdis-amd64
+./java HelloWorld
+./java -XX:+TraceBytecodes HelloWorld > HelloWorld.TraceBytecodes.txt
+./java -XX:+PrintInterpreter HelloWorld > HelloWorld.PrintInterpreter.txt
+./java -XX:+PrintAssembly HelloWorld > HelloWorld.PrintAssembly.txt
+./java -XX:+PrintAssembly -XX:CompileCommand=java.lang.StringLatin1::indexOfChar HelloWorld
+./java -XX:+PrintInterpreter HelloWorld | grep iadd
+./java -XX:+PrintCompilation HelloWorld | grep getstatic
+./java -XX:+PrintCompilation -XX:-TieredCompilation HelloWorld | grep getstatic
+
+    962312     7.56%    e0    fast_iload
+    739402     5.81%    dc    fast_aload_0
+    468136     3.68%    84    iinc
+    452733     3.56%    a7    goto
+    449343     3.53%    1b    iload_1
+    440705     3.46%    b6    invokevirtual
+
+
+gdb java
+run -XX:+PrintInterpreter HelloWorld | grep iadd
+#iadd  96 iadd  [0x0000000118015820, 0x0000000118015860]  64 bytes
+#iadd  96 iadd  [0x0000000118015820, 0x0000000118015860]  64 bytes
+#getstatic  178 getstatic  [0x000000010ffdefe0, 0x000000010ffdf2c0]  736 bytes
+nofast_aload_0  236 nofast_aload_0  [0x00000001200295e0, 0x0000000120029640]  96 bytes
+
+(gdb) b init_globals()
+(gdb) run HelloWorld
+...
+Breakpoint 1, init_globals () at /share/OpenJDK/hsx/hotspot/src/share/vm/runtime/init.cpp:92
+(gdb) fin
+Run till exit from #0  init_globals () at /share/OpenJDK/hsx/hotspot/src/share/vm/runtime/init.cpp:92
+...
+(gdb) b *0x00007fffeedeb400
+(gdb) c
+----
+
+
+[source%nowrap,bash]
+----
+export _JAVA_OPTIONS="-XX:-TieredCompilation -XX:-UseOnStackReplacement -XX:CICompilerCount=1 -XX:-UseCompressedOops -Xbatch"
+./javac AtomicLongTest.java
+./java AtomicLongTest 10000
+./jdb -launch AtomicLongTest 20000
+
+main[1] stop in AtomicLongTest:17
+main[1] cont
+
+./java -agentlib:jdwp=transport=dt_socket,address=8000,server=y,suspend=n AtomicLongTest 200000000
+./jdb -attach 8000
+
+vmmap 64728
+----
+
+== 常见问题
+
+.未解决
+signal SIGSEGV: invalid address::
+thread #2, name = 'java', stop reason = signal SIGSEGV: invalid address (fault address: 0x0)
+. lldb 运行时，如何设置只因为断点停止？
+. thread #2 到底在做了什么？
+** thread #1: tid = 17400, 0x00007ffff7c91197 libc.so.6`__GI___futex_abstimed_wait_cancelable64 at futex-internal.c:57:12, name = 'java'
+** thread #2: tid = 17450, 0x00007fffe100064d, name = 'java', stop reason = signal SIGSEGV: invalid address (fault address: 0x0)
+
+== 参考资料
+
+. https://openjdk.org/groups/build/doc/building.html[Building the JDK^]
+. https://wiki.openjdk.org/display/HotSpot/PrintAssembly[PrintAssembly^]
+. https://www.progdoc.de
+. https://www.progdoc.de/papers/Joker2014/joker2014.html#(1)[Analyzing and Debugging the HotSpot VM at the OS Level^]
+. https://home.cnblogs.com/u/mazhimazhi/[鸠摩（马智）^]
+. https://metebalci.com/blog/demystifying-the-jvm-jvm-variants-cppinterpreter-and-templateinterpreter/[Demystifying the JVM: JVM Variants, Cppinterpreter and TemplateInterpreter^]
+. https://julio-falbo.medium.com/
+. https://julio-falbo.medium.com/understand-jvm-and-jit-compiler-part-1-a94c27d32478[Understand JVM and JIT Compiler — Part 1^]
+

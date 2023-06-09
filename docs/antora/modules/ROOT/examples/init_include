@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# 在项目根目录下，执行 docs/antora/modules/ROOT/examples/init_include
+# 不要在 examples 目录下，执行 ./init_include
+
+i=0
+echo "cwd: $(pwd)"
+
+if [ -z "$workingDir" ]; then
+  echo "$((i++)). 设置 workingDir 目录"
+  workingDir="$(pwd)/.."
+fi
+
+cd "$workingDir/learn-java" || exit
+echo "$((i++)). 生成 Include.mk"
+
+export jdk_location="$workingDir/jdk" # JDK 源码位置，绝对位置
+#export jdk_source_count=6000 # 源码数量，总计不超过 6000，太多导致 CLion 解析卡顿
+#export jdk_build_location=build/macosx-x86_64-server-slowdebug # JDK 构建位置，相对 jdk_location 的位置，部分源码依赖构建出的文件
+export jdk_include_location=docs/antora/modules/ROOT/examples/Include.mini.mk # 生成 Include 文件位置，相对 jdk_location 的位置，设置不同的名称以观察生成结果间差异
+./gradlew antlr:test --tests CppIncludeTest.jdkGenerateIncludes --rerun-tasks # 使用 gradle 执行特定单元测试，--rerun-tasks 忽略缓存，每次都执行
