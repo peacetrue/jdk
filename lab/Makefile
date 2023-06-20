@@ -13,13 +13,14 @@ JAVA_OPTS:=-Xms100M -Xmx100M
 .MAKEFLAGS:#取消 make 命令默认的选项和标志
 #.SILENT:#静默模式，不会输出执行的命令
 #所有未明确匹配的目标，都转到 build 下。对含路径的目标无效。例如：make empty.bin -> make build/empty.bin。
-%: $(BUILD)/%;
+#%: $(BUILD)/%;
 
 #创建构建目录。make build
 $(BUILD):
 	mkdir -p $@
-$(BUILD)/%:
-	mkdir -p $@
+# 此目标无依赖，优先级很高，会取代其他有依赖的任务，不能使用
+#$(BUILD)/%:
+#	mkdir -p $@
 dir/%:
 	mkdir -p $(BUILD)/$*
 #删除构建目录。make clean
@@ -50,7 +51,7 @@ java_bin_$(OS_MAC):=/Library/Java/JavaVirtualMachines/jdk1.8.0_51.jdk/Contents/H
 java_os:=$(if $(filter $(OS_LINUX),$(OS)),linux,macosx)
 java_variant:=server#zero
 java_bin_$(OS_MAC)_default:=$(shell pwd)/../build/$(java_os)-x86_64-$(java_variant)-slowdebug/jdk/bin
-java_bin_$(OS_LINUX)_default:=/root/jdk/build/$(java_os)-x86_64-$(java_variant)-slowdebug/jdk/bin
+java_bin_$(OS_LINUX)_default:=~/Documents/jdk/build/$(java_os)-x86_64-$(java_variant)-slowdebug/jdk/bin
 java_bin:=$(if $(java),$(java_bin_$(OS)),$(java_bin_$(OS)_default))
 $(BUILD)/flags:
 # -XX:+UnlockExperimentalVMOptions -Xprintflags or -XX:+PrintFlagsWithComments to see them.
@@ -97,8 +98,8 @@ $(BUILD)/%.maps: $(BUILD)/%.pid
 	cat /proc/`cat $<`/maps > $@
 # pmap 分析内存
 $(BUILD)/%.pmap: $(BUILD)/%.pid
-#	pmap `cat $<` > $@
-	vmmap `cat $<` > $@
+	pmap `cat $<` > $@
+#	vmmap `cat $<` > $@
 # 重命名后缀，以便支持 graffle 文件选择
 $(BUILD)/%.maps.csv: $(BUILD)/%.maps
 	cp $< $@
@@ -111,8 +112,10 @@ $(BUILD)/%.size: $(BUILD)/%.so.ls
 sleep:
 	rm -rf $(BUILD)/Sleep*
 	make $(BUILD)/Sleep.ps.humanize $(BUILD)/Sleep.top $(BUILD)/Sleep.maps.csv $(BUILD)/Sleep.pmap java=java args='&';
-# make sleep SUBDIR=/sleep-100 JAVA_OPTS='-Xms100M -Xmx100M'
-# make sleep SUBDIR=/sleep-200 JAVA_OPTS='-Xms200M -Xmx200M'
+sleeps:
+	rm -rf $(BUILD)/sleep*
+	make sleep SUBDIR=/sleep-100 JAVA_OPTS='-Xms100M -Xmx100M'
+	make sleep SUBDIR=/sleep-1000 JAVA_OPTS='-Xms1000M -Xmx1000M'
 # lndir $workingDir/learn-java/jvm/src/main/java src
 # ln -s $workingDir/learn-java/jvm/src/main/java src
 
