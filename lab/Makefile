@@ -5,6 +5,7 @@ BUILD:=build$(SUBDIR)#设置构建目录
 BUILD:=$(BUILD)$(if $(JAVA),/$(JAVA),)
 #删除 BUILD 中的空格，避免执行 clean 时，误删根目录。如果传入 SUBDIR=' / sub'，则删除命令为 rm -rf build / sub，结果很惨烈，好在是虚拟机
 BUILD:=$(shell echo "$(BUILD)" | tr -d ' ')
+JAVA_OPTS:=-Xms100M -Xmx100M
 
 ################# 基础配置 #################
 .SECONDARY:#保留中间过程文件
@@ -17,13 +18,21 @@ BUILD:=$(shell echo "$(BUILD)" | tr -d ' ')
 #创建构建目录。make build
 $(BUILD):
 	mkdir -p $@
+$(BUILD)/%:
+	mkdir -p $@
+dir/%:
+	mkdir -p $(BUILD)/$*
 #删除构建目录。make clean
 clean:
 	rm -rf $(BUILD)
-#删除指定目录或文件。make singleton.clean
-$(BUILD)/%.clean:
+#删除指定目录或文件。make clean/singleton
+clean/%:
 	rm -rf $(BUILD)/$*
 
+# jdk 项目中不便于编写 java 代码，对应的 java 代码在 learn-java 仓库中
+prepare:
+	rm -rf src
+	cp -r $(workingDir)/learn-java/jvm/src/main/java src
 
 #关闭地址随机化
 rvs:
@@ -40,8 +49,9 @@ java_bin_$(OS_LINUX):=/usr/lib/jvm/java-17-openjdk-amd64/bin
 java_bin_$(OS_MAC):=/Library/Java/JavaVirtualMachines/jdk1.8.0_51.jdk/Contents/Home/bin
 java_os:=$(if $(filter $(OS_LINUX),$(OS)),linux,macosx)
 java_variant:=server#zero
-java_bin_default:=$(shell pwd)/../build/$(java_os)-x86_64-$(java_variant)-slowdebug/jdk/bin
-java_bin:=$(if $(java),$(java_bin_$(OS)),$(java_bin_default))
+java_bin_$(OS_MAC)_default:=$(shell pwd)/../build/$(java_os)-x86_64-$(java_variant)-slowdebug/jdk/bin
+java_bin_$(OS_LINUX)_default:=/root/jdk/build/$(java_os)-x86_64-$(java_variant)-slowdebug/jdk/bin
+java_bin:=$(if $(java),$(java_bin_$(OS)),$(java_bin_$(OS)_default))
 $(BUILD)/flags:
 # -XX:+UnlockExperimentalVMOptions -Xprintflags or -XX:+PrintFlagsWithComments to see them.
 	$(java_bin)/java -Xprintflags -version > $(BUILD)/java.flags
@@ -55,33 +65,56 @@ $(BUILD)/%.class: $(SRC)/%.java $(BUILD)
 $(BUILD)/%.javap: $(BUILD)/%.class
 	$(java_bin)/javap -classpath=$(BUILD) -c $* > $@
 #	$(java_bin)/javap -c $(BUILD)/$* > $@
-#执行字节码，-Duser.dir 指定字节码查找位置，必须是绝对路径。args 传递程序参数。make exec/com/github/peacetrue/learn/java/Sleep args=1
-exec/%: $(BUILD)/%.class
-	$(java_bin)/java -Duser.dir=$(shell pwd)/$(BUILD) $* $(args)
+
+default_package:=com/github/peacetrue/learn/java
+#执行字节码，-Duser.dir 指定字节码查找位置，必须是绝对路径。args 传递程序参数。make java/com/github/peacetrue/learn/java/Sleep args=1
+java/%: $(BUILD)/%.class
+	$(java_bin)/java $(JAVA_OPTS) -Duser.dir=$(shell pwd)/$(BUILD) $* $(args)
 #	$(java_bin)/java $(shell pwd)/$(BUILD)/$* $(args)
-# 执行 java 目录下字节码。make exec/java/Sleep args=1
-exec/java/%: exec/com/github/peacetrue/learn/java/%;
-#-Xms100M -Xmx100M
-$(BUILD)/%.maps: $(BUILD)
-	cat /proc/`ps -e | grep "java" | head -n 1 | awk '{printf $$1}'`/maps > $@
-$(BUILD)/%.so.file: $(BUILD)/%.maps
+# 执行默认目录下字节码。make java/def/Sleep args='100 &'
+java/def/%: java/$(default_package)/%;
+# 调试。make lldb/com/github/peacetrue/learn/java/HelloWorld
+lldb/%: $(BUILD)/%.class
+	lldb -- $(java_bin)/java -Duser.dir=$(shell pwd)/$(BUILD) $*
+# 调试默认目录下字节码。make lldb/def/HelloWorld
+lldb/def/%: lldb/$(default_package)/%;
+
+# 进程信息：USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+$(BUILD)/%.ps: java/def/%
+	ps aux | grep "bin/java" | grep -v "grep" > $@
+# 格式化进程信息中的内存大小。 numfmt --from-unit=K --to=iec-i -z --format=%.1f, 4096 4096
+# echo -e "4096\n4096" | awk '{cmd="numfmt --from-unit=K --to=iec-i -z "; printf "%s ", $0; system(cmd $0); printf " "; system(cmd $1); printf "\n"; }'
+$(BUILD)/%.ps.humanize: $(BUILD)/%.ps
+	cat $< | awk '{cmd="numfmt --from-unit=K --to=iec-i -z "; printf "%s ", $$2; system(cmd $$5); printf " "; system(cmd $$6); printf "\n"; }' > $@
+# 进程编号
+$(BUILD)/%.pid: java/def/%
+	ps -a | grep "java" | grep -v "grep" | head -n 1 | awk '{print $$1}' > $@
+# top 分析内存
+$(BUILD)/%.top: $(BUILD)/%.pid
+	top -b -n 1 -p `cat $<` > $@
+# maps 分析内存
+$(BUILD)/%.maps: $(BUILD)/%.pid
+	cat /proc/`cat $<`/maps > $@
+# pmap 分析内存
+$(BUILD)/%.pmap: $(BUILD)/%.pid
+#	pmap `cat $<` > $@
+	vmmap `cat $<` > $@
+# 重命名后缀，以便支持 graffle 文件选择
+$(BUILD)/%.maps.csv: $(BUILD)/%.maps
+	cp $< $@
+$(BUILD)/%.maps.head: $(BUILD)/%.maps
+	sed "1i $(shell seq -s ' ' 1 `cat $< | grep java | head -n 1 | awk '{print NF}'`)" $< | column -t > $@
+$(BUILD)/%.so.ls: $(BUILD)/%.maps
 	cat $< | grep -E '/usr|/root' | awk '{printf "%s\n", $$NF}' | uniq | xargs -I {} ls -lah "{}" | awk '{printf "%s %s\n",$$NF,$$5}' | column -t > $@
-$(BUILD)/%.size: $(BUILD)/%.so.file
+$(BUILD)/%.size: $(BUILD)/%.so.ls
 	cat $< | awk -F / '{printf "%s\n", $$NF}' | column -t > $@
-$(BUILD)/%.rms: $(BUILD)/%.run $(BUILD)/%.size;
-# 0000555555554000
-# 00000000000011e0
-# 00005555555551e0
-
-$(BUILD)/java.ldd: $(BUILD)
-	ldd $(java_bin)/java > $@
-$(BUILD)/lldb:
-	lldb $(java_bin)/java
-
-#%.case.clean: $(BUILD)/%.clean;
-# make java.file.clean java.file
-# make java.size.clean java.size
-# make clean Sleep.rms
+sleep:
+	rm -rf $(BUILD)/Sleep*
+	make $(BUILD)/Sleep.ps.humanize $(BUILD)/Sleep.top $(BUILD)/Sleep.maps.csv $(BUILD)/Sleep.pmap java=java args='&';
+# make sleep SUBDIR=/sleep-100 JAVA_OPTS='-Xms100M -Xmx100M'
+# make sleep SUBDIR=/sleep-200 JAVA_OPTS='-Xms200M -Xmx200M'
+# lndir $workingDir/learn-java/jvm/src/main/java src
+# ln -s $workingDir/learn-java/jvm/src/main/java src
 
 vars:
 	$(info BUILD:'$(BUILD)')
@@ -91,3 +124,4 @@ vars:
 	$(info java_bin_$(OS_LINUX):'$(java_bin_$(OS_LINUX))')
 	$(info java_bin_$(OS_MAC):'$(java_bin_$(OS_MAC))')
 	$(info java_bin:'$(java_bin)')
+	$(info workingDir:'$(workingDir)')
