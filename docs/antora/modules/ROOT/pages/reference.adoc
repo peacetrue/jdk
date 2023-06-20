@@ -11,16 +11,16 @@ image:https://img.shields.io/github/actions/workflow/status/peacetrue/{app-name}
 . XCode：14.2
 . 源码： https://github.com/peacetrue/jdk
 
-https://github.com/peacetrue/jdk 是从 https://github.com/openjdk/jdk fork 出的，自定义一个 jdk-17+35-mac 的分支，用于处理构建中出现的问题。
-// git checkout -b jdk-17+35-mac jdk-17+35
+https://github.com/peacetrue/jdk 是从 https://github.com/openjdk/jdk fork 出的，自定义一个 jdk-17+35-custom 的分支，用于处理构建中出现的问题。
+// git checkout -b jdk-17+35-custom jdk-17+35
 
 == 检出源码
 
-检出源码并切换到分支 jdk-17+35-mac：
+检出源码并切换到分支 jdk-17+35-custom：
 
 [source%nowrap,bash]
 ----
-git clone https://github.com/peacetrue/jdk -b jdk-17+35-mac
+git clone https://github.com/peacetrue/jdk -b jdk-17+35-custom
 ----
 
 == 准备 Boot JDK 17

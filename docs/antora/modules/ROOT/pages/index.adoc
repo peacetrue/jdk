@@ -21,11 +21,11 @@ image:https://img.shields.io/nexus/r/{app-group}/{app-name}?label={app-name}&ser
 
 == 用法（How）
 
-检出 jdk-17+35-mac 分支：
+检出 jdk-17+35-custom 分支：
 
 [source%nowrap,bash]
 ----
-git clone https://github.com/peacetrue/jdk -b jdk-17+35-mac
+git clone https://github.com/peacetrue/jdk -b jdk-17+35-custom
 ----
 
 == 参与者（Who）

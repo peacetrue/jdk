@@ -2,6 +2,6 @@
 
 :numbered!: ''
 
-== jdk-17+35-mac
+== jdk-17+35-custom
 
 //TODO 待补充

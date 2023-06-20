@@ -1,7 +1,3 @@
-# 用于打印当前工作目录
-clean:
-	$(info clean -> cwd: $(shell pwd))
-
 #对于GCC编译器，你可以使用-fdeclspec选项来启用__declspec属性的支持。
 #对于Microsoft Visual C++编译器（MSVC），-fms-extensions选项可以启用对__declspec属性的支持
 CXXFLAGS += -fdeclspec

@@ -1,10 +1,10 @@
 = 快速入门
 
-检出 jdk-17+35-mac 分支：
+检出 jdk-17+35-custom 分支：
 
 [source%nowrap,bash]
 ----
-git clone https://github.com/peacetrue/jdk -b jdk-17+35-mac
+git clone https://github.com/peacetrue/jdk -b jdk-17+35-custom
 ----
 
 查看 B 站视频：
