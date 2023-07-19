@@ -1,0 +1,7 @@
+{
+  "size": 32,
+  "blocks": [
+    {"description": "frame_type", "startAddress": 0},
+    {"description": "next_frame", "startAddress": -8}
+  ]
+}

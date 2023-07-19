@@ -1,48 +1,27 @@
-# https://www.gnu.org/software/make/manual/html_node/Options-Summary.html
-SRC=src
-SUBDIR:=#在子目录下构建时使用，默认为空格，设置时需要以 / 起始，例如：SUBDIR=/dynamic
-BUILD:=build$(SUBDIR)#设置构建目录
-BUILD:=$(BUILD)$(if $(JAVA),/$(JAVA),)
-#删除 BUILD 中的空格，避免执行 clean 时，误删根目录。如果传入 SUBDIR=' / sub'，则删除命令为 rm -rf build / sub，结果很惨烈，好在是虚拟机
-BUILD:=$(shell echo "$(BUILD)" | tr -d ' ')
-JAVA_OPTS:=-Xms100M -Xmx100M
+include common.mk
+EXEC_EXTENSION=.class
+include run.mk
 
-################# 基础配置 #################
-.SECONDARY:#保留中间过程文件
-.SUFFIXES:#取消默认文件后缀识别。例如：make empty -> make empty.cpp
-.MAKEFLAGS:#取消 make 命令默认的选项和标志
-#.SILENT:#静默模式，不会输出执行的命令
-#所有未明确匹配的目标，都转到 build 下。对含路径的目标无效。例如：make empty.bin -> make build/empty.bin。
-#%: $(BUILD)/%;
-
-#创建构建目录。make build
-$(BUILD):
-	mkdir -p $@
-# 此目标无依赖，优先级很高，会取代其他有依赖的任务，不能使用
-#$(BUILD)/%:
-#	mkdir -p $@
-dir/%:
-	mkdir -p $(BUILD)/$*
-#删除构建目录。make clean
-clean:
-	rm -rf $(BUILD)
-#删除指定目录或文件。make clean/singleton
-clean/%:
-	rm -rf $(BUILD)/$*
-
+JAVA_OPTS:=
 # jdk 项目中不便于编写 java 代码，对应的 java 代码在 learn-java 仓库中
+# workingDir 是存放项目的工作目录，需自行设置
+# echo 'export workingDir=$HOME/Documents' >> ~/.bashrc
 prepare:
-	rm -rf src
-	cp -r $(workingDir)/learn-java/jvm/src/main/java src
+	rm -rf $(SRC)
+	cp -r $(workingDir)/learn-java/jvm/src/main/java $(SRC)
+# 	lndir $workingDir/learn-java/jvm/src/main/java src
+# 	ln -s $workingDir/learn-java/jvm/src/main/java src
 
 #关闭地址随机化
-rvs:
+rvs/close:
 #	cp /etc/sysctl.conf /etc/sysctl.conf.bak
 #	echo 'kernel.randomize_va_space = 0' >> /etc/sysctl.conf
 #	sysctl -p
 	sysctl -a | grep kernel.randomize_va_space
 	sysctl -w kernel.randomize_va_space=0
 
+# 编译运行调试 java
+JDK_DIR:=$(shell realpath "$(shell pwd)/..")
 OS:=$(shell uname)#操作系统
 OS_LINUX:=Linux
 OS_MAC:=Darwin
@@ -50,9 +29,8 @@ java_bin_$(OS_LINUX):=/usr/lib/jvm/java-17-openjdk-amd64/bin
 java_bin_$(OS_MAC):=/Library/Java/JavaVirtualMachines/jdk1.8.0_51.jdk/Contents/Home/bin
 java_os:=$(if $(filter $(OS_LINUX),$(OS)),linux,macosx)
 java_variant:=server#zero
-java_bin_$(OS_MAC)_default:=$(shell pwd)/../build/$(java_os)-x86_64-$(java_variant)-slowdebug/jdk/bin
-java_bin_$(OS_LINUX)_default:=~/Documents/jdk/build/$(java_os)-x86_64-$(java_variant)-slowdebug/jdk/bin
-java_bin:=$(if $(java),$(java_bin_$(OS)),$(java_bin_$(OS)_default))
+java_bin_build:=$(workingDir)/jdk/build/$(java_os)-x86_64-$(java_variant)-slowdebug/jdk/bin
+java_bin:=$(if $(JAVA),$(java_bin_$(OS)),$(java_bin_build))
 $(BUILD)/flags:
 # -XX:+UnlockExperimentalVMOptions -Xprintflags or -XX:+PrintFlagsWithComments to see them.
 	$(java_bin)/java -Xprintflags -version > $(BUILD)/java.flags
@@ -62,62 +40,99 @@ $(BUILD)/flags:
 # 编译源文件，-d 指定字节码生成位置。make build/com/github/peacetrue/learn/java/VolatileTestChangeFromChild.class
 $(BUILD)/%.class: $(SRC)/%.java $(BUILD)
 	$(java_bin)/javac -d $(BUILD) $<
-# 反编译字节码，-classpath 指定字节码查找位置。make build/com/github/peacetrue/learn/java/VolatileTestChangeFromChild.javap
+## 反编译字节码，-classpath 指定字节码查找位置。make build/com/github/peacetrue/learn/java/VolatileTestChangeFromChild.javap
 $(BUILD)/%.javap: $(BUILD)/%.class
-	$(java_bin)/javap -classpath=$(BUILD) -c $* > $@
-#	$(java_bin)/javap -c $(BUILD)/$* > $@
+	$(java_bin)/javap -classpath $(BUILD) -c $* > $@
+#	$(java_bin)/javap -c $(BUILD)/$* > $@ #反例
 
-default_package:=com/github/peacetrue/learn/java
-#执行字节码，-Duser.dir 指定字节码查找位置，必须是绝对路径。args 传递程序参数。make java/com/github/peacetrue/learn/java/Sleep args=1
-java/%: $(BUILD)/%.class
-	$(java_bin)/java $(JAVA_OPTS) -Duser.dir=$(shell pwd)/$(BUILD) $* $(args)
-#	$(java_bin)/java $(shell pwd)/$(BUILD)/$* $(args)
-# 执行默认目录下字节码。make java/def/Sleep args='100 &'
+default_package=com/github/peacetrue/learn/java
+java_invoker=$(java_bin)/java $(JAVA_OPTS) -Duser.dir=$(shell pwd)/$(BUILD) $(1) $(ARGS)
+#执行字节码，-Duser.dir 指定字节码查找位置，必须是绝对路径。ARGS 传递程序参数。make java/com/github/peacetrue/learn/java/Sleep ARGS=1
+java/%: $(BUILD)/%.class $(BUILD)/%.javap
+#	$(java_bin)/java $(JAVA_OPTS) -Duser.dir=$(shell pwd)/$(BUILD) $* $(ARGS)
+	$(call java_invoker,$*)
+#	$(java_bin)/java $(shell pwd)/$(BUILD)/$* $(ARGS) #反例
+# 执行默认目录下字节码。make java/def/Sleep ARGS='100 &'
 java/def/%: java/$(default_package)/%;
+
 # 调试。make lldb/com/github/peacetrue/learn/java/HelloWorld
+lldb:
+	lldb $(LFLAGS) -- $(java_bin)/java $(JAVA_OPTS) $(ARGS)
 lldb/%: $(BUILD)/%.class
-	lldb -- $(java_bin)/java -Duser.dir=$(shell pwd)/$(BUILD) $*
+	lldb $(LFLAGS) -- $(call java_invoker,$*)
 # 调试默认目录下字节码。make lldb/def/HelloWorld
 lldb/def/%: lldb/$(default_package)/%;
+$(BUILD)/lldb.source:
+	echo "command script import $(JDK_DIR)/docs/antora/modules/ROOT/examples/lldb/commands.py" > $@
+	echo "run" >> $@
+	echo "c" >> $@
+lldb.case: $(BUILD)/lldb.source
+	make lldb/def/HelloWorld LFLAGS='-s $<'
 
+
+run/%: java/def/%;
+# 观察虚拟内存
 # 进程信息：USER         PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
 $(BUILD)/%.ps: java/def/%
 	ps aux | grep "bin/java" | grep -v "grep" > $@
 # 格式化进程信息中的内存大小。 numfmt --from-unit=K --to=iec-i -z --format=%.1f, 4096 4096
 # echo -e "4096\n4096" | awk '{cmd="numfmt --from-unit=K --to=iec-i -z "; printf "%s ", $0; system(cmd $0); printf " "; system(cmd $1); printf "\n"; }'
 $(BUILD)/%.ps.humanize: $(BUILD)/%.ps
-	cat $< | awk '{cmd="numfmt --from-unit=K --to=iec-i -z "; printf "%s ", $$2; system(cmd $$5); printf " "; system(cmd $$6); printf "\n"; }' > $@
+	cat $< | awk '{cmd="numfmt --from-unit=K --to=iec-i "; printf "%s ", $$2; system(cmd $$5); printf " "; system(cmd $$6); printf "\n"; }' > $@
 # 进程编号
-$(BUILD)/%.pid: java/def/%
-	ps -a | grep "java" | grep -v "grep" | head -n 1 | awk '{print $$1}' > $@
-# top 分析内存
-$(BUILD)/%.top: $(BUILD)/%.pid
-	top -b -n 1 -p `cat $<` > $@
-# maps 分析内存
-$(BUILD)/%.maps: $(BUILD)/%.pid
-	cat /proc/`cat $<`/maps > $@
-# pmap 分析内存
-$(BUILD)/%.pmap: $(BUILD)/%.pid
-	pmap `cat $<` > $@
-#	vmmap `cat $<` > $@
-# 重命名后缀，以便支持 graffle 文件选择
-$(BUILD)/%.maps.csv: $(BUILD)/%.maps
-	cp $< $@
-$(BUILD)/%.maps.head: $(BUILD)/%.maps
-	sed "1i $(shell seq -s ' ' 1 `cat $< | grep java | head -n 1 | awk '{print NF}'`)" $< | column -t > $@
-$(BUILD)/%.so.ls: $(BUILD)/%.maps
-	cat $< | grep -E '/usr|/root' | awk '{printf "%s\n", $$NF}' | uniq | xargs -I {} ls -lah "{}" | awk '{printf "%s %s\n",$$NF,$$5}' | column -t > $@
-$(BUILD)/%.size: $(BUILD)/%.so.ls
-	cat $< | awk -F / '{printf "%s\n", $$NF}' | column -t > $@
-sleep:
-	rm -rf $(BUILD)/Sleep*
-	make $(BUILD)/Sleep.ps.humanize $(BUILD)/Sleep.top $(BUILD)/Sleep.maps.csv $(BUILD)/Sleep.pmap java=java args='&';
-sleeps:
-	rm -rf $(BUILD)/sleep*
-	make sleep SUBDIR=/sleep-100 JAVA_OPTS='-Xms100M -Xmx100M'
-	make sleep SUBDIR=/sleep-1000 JAVA_OPTS='-Xms1000M -Xmx1000M'
-# lndir $workingDir/learn-java/jvm/src/main/java src
-# ln -s $workingDir/learn-java/jvm/src/main/java src
+$(BUILD)/%.pid: run/%
+#	ps -a | grep "java" | grep -v "grep" | head -n 1 | awk '{print $$1}' > $@ # 不使用 -f 选项
+	ps -af | grep "$(java_bin)/java" | grep -v "grep" > $@.all
+	ps -af | grep "$(java_bin)/java" | grep -v "grep" | head -n 1 | awk '{print $$2}' > $@
+#	ps -a | grep "java" | grep -v "grep" | head -n 1 | awk '{print $$1}' > $@
+
+hello.case: run/HelloWorld;
+
+sleep.case: $(BUILD)/Sleep.pmap $(BUILD)/Sleep.maps $(BUILD)/Sleep.top
+	sleep 1
+#sleep_flags:="java=java ARGS='&'"
+sleep_ARGS:="ARGS=&"
+sleep_clean:="clean"
+sleep_sizes:=10 100 1024
+sleep.cases:
+	@for size in $(sleep_sizes); do \
+	    make $(sleep_clean) sleep.case SUBDIR=/sleep-$${size}M JAVA_OPTS="-Xms$${size}M -Xmx$${size}M" $(sleep_ARGS); \
+	done
+# 执行 graffle 绘图
+graffle_dir:=$(workingDir)/learn-graffle/automation
+sleep.graffle.cases:
+	@for size in $(sleep_sizes); do \
+	    make -C $(graffle_dir) demo-memory.call.case script_argument=$(shell pwd)/$(BUILD)/sleep-$${size}M/sleep.maps; \
+    done
+
+#统计所有字节码执行的总次数，为什么次数不是固定的
+bytecodes.count.case:
+	make java/def/HelloWorld JAVA_OPTS='-XX:+CountBytecodes'
+#统计各个字节码执行的次数
+bytecodes.histogram.case:
+	make java/def/HelloWorld JAVA_OPTS='-XX:+PrintBytecodeHistogram'
+#查看方法的字节码实现
+bytecodes.trace.case:
+	make java/def/HelloWorld JAVA_OPTS='-XX:+TraceBytecodes' ARGS='| grep -m 1 -A 10 "HelloWorld.main"'
+#查看字节码对应的汇编代码
+interpreter.case:
+	make java/def/HelloWorld JAVA_OPTS='-XX:+PrintInterpreter' ARGS='| less'
+iadd.case: $(BUILD)/iadd.source
+#	make java/def/HelloWorld JAVA_OPTS='-XX:+TraceBytecodes' ARGS='| grep -m 1 -B 30  iadd'
+	make lldb LFLAGS='-s $<'
+#  JAVA_OPTS='-XX:+PrintInterpreter' ARGS='| grep -m 1 "iadd "'
+$(BUILD)/iadd.source:
+	echo "run -XX:+PrintInterpreter | grep iadd" > $@
+	echo "c" >> $@
+#	echo "b init_globals" > $@
+#	echo "run" >> $@
+#	echo "finish" >> $@
+#	echo "b *$(shell cat $<)" >> $@
+#	echo "c" >> $@
+$(BUILD)/iadd.address: $(BUILD)/iadd.asm
+	cat $< | awk -F'[][]' '{print $$2}' | awk -F ', ' '{print $$1}' > $@
+$(BUILD)/iadd.asm:
+	make java/def/HelloWorld JAVA_OPTS='-XX:+PrintInterpreter' ARGS='| grep -m 1 "iadd " > $@'
 
 vars:
 	$(info BUILD:'$(BUILD)')
@@ -128,3 +143,23 @@ vars:
 	$(info java_bin_$(OS_MAC):'$(java_bin_$(OS_MAC))')
 	$(info java_bin:'$(java_bin)')
 	$(info workingDir:'$(workingDir)')
+
+
+# 构建 JDK
+jdk.build.case:
+	cd ..  \
+	&& bash configure                                    \
+    --with-debug-level=slowdebug            		\
+    --with-native-debug-symbols=internal 		\
+    --with-jvm-variants=$(java_variant)                 \
+    --disable-warnings-as-errors	\
+    && make images CONF=$(java_os)-x86_64-$(java_variant)-slowdebug
+
+
+
+include hsdis.mk
+
+
+
+
+

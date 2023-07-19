@@ -1,0 +1,9 @@
+[
+  "stack slot n-1",
+  "...",
+  "stack slot 0",
+  "parameter 0",
+  "call_wrapper",
+  "frame_type",
+  "next_frame"
+]

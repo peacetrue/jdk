@@ -1,0 +1,22 @@
+[
+  "调用桩",
+  "return_from_Java",
+  "argument word n",
+  "...",
+  "argument word 1",
+  "saved r15",
+  "saved r14",
+  "saved r13",
+  "saved r12",
+  "saved rbx",
+  "call wrapper",
+  "result",
+  "result type",
+  "method",
+  "entry point",
+  "parameters",
+  "saved rbp",
+  "return address",
+  "parameter size",
+  "thread"
+]

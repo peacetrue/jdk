@@ -1,0 +1,9 @@
+[
+  "参数寄存器",
+  "rdi : c_rarg0",
+  "rsi : c_rarg1",
+  "rdx : c_rarg2",
+  "rcx : c_rarg3",
+  "r8d : c_rarg4",
+  "r9d : c_rarg5"
+]

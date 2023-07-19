@@ -1,0 +1,52 @@
+[
+  {
+    "name": "ZeroStack",
+    "properties": [
+      {
+        "type": "intptr_t",
+        "name": "*_base"
+      },
+      {
+        "type": "intptr_t",
+        "name": "*_top"
+      },
+      {
+        "type": "intptr_t",
+        "name": "*_sp"
+      },
+      {
+        "type": "int",
+        "name": "_shadow_pages_size"
+      }
+    ]
+  },
+  {
+    "name": "JavaCallWrapper",
+    "properties": [
+      {
+        "type": "JavaThread",
+        "name": "*_thread"
+      },
+      {
+        "type": "JNIHandleBlock",
+        "name": "*_handles"
+      },
+      {
+        "type": "Method",
+        "name": "*_callee_method"
+      },
+      {
+        "type": "oop",
+        "name": "_receiver"
+      },
+      {
+        "type": "JavaFrameAnchor",
+        "name": "_anchor"
+      },
+      {
+        "type": "JavaValue",
+        "name": "*_result"
+      }
+    ]
+  }
+]

@@ -1,0 +1,30 @@
+[
+  {
+    "Breakpoint": {
+      "BKPTOptions": {
+        "AutoContinue": false,
+        "ConditionText": "(int)strcmp(ik->name()->as_C_string(), \"java/lang/Object\")==0",
+        "EnabledState": true,
+        "IgnoreCount": 0,
+        "OneShotState": false
+      },
+      "BKPTResolver": {
+        "Options": {
+          "Column": 0,
+          "Exact": false,
+          "FileName": "/Users/xiayx/Documents/Github/peacetrue/jdk/src/hotspot/share/classfile/classFileParser.cpp",
+          "Inlines": true,
+          "LineNumber": 5232,
+          "Offset": 0,
+          "SkipPrologue": true
+        },
+        "Type": "FileAndLine"
+      },
+      "Hardware": false,
+      "SearchFilter": {
+        "Options": {},
+        "Type": "Unconstrained"
+      }
+    }
+  }
+]

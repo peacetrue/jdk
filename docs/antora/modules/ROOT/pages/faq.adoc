@@ -2,4 +2,13 @@
 
 == IDEA
 
-`workspace.xml`
+
+== LLDB
+
+=== warning: hit breakpoint while running function, skipping commands and conditions to prevent recursion
+
+ _b_s(debugger, "-n set_interpreter_entry", "-c 'entry!=NULL && name()->equals($method_target)'")
+
+.解决办法：
+* 使用属性替代方法
+* 使用前缀属性

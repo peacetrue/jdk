@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# 在项目根目录下，执行 docs/antora/modules/ROOT/examples/class-diagrams/generate
+
+i=0
+echo "cwd: $(pwd)"
+
+if [ -z "$workingDir" ]; then
+  echo "$((i++)). 设置 workingDir 目录"
+  workingDir="$(pwd)/.."
+fi
+
+cd "$workingDir/learn-java" || exit
+echo "$((i++)). 生成类图"
+
+# Antlr4 必须 java 11 及以上
+export JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk-17.0.4.jdk/Contents/Home"
+./gradlew antlr:test --tests CppClassTest.saveClasses --rerun-tasks # 使用 gradle 执行特定单元测试，--rerun-tasks 忽略缓存，每次都执行
