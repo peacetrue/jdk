@@ -1,12 +1,5 @@
 name: Pre-submit tests
 
-on:
-  push:
-    branches-ignore:
-      - master
-      - pr/*
-      - jdk-17+35-custom
-
 permissions:
   contents: read
 
