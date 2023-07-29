@@ -3,7 +3,7 @@ name: build
 on:
   push:
     branches:
-      - jdk-17+35-custom
+      - 'jdk-17+35-custom'
   # 除了推送代码外，还可以手动触发此 Workflow
   workflow_dispatch:
 
@@ -16,9 +16,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up JDK 17
-        uses: actions/setup-java@v2
+        uses: actions/setup-java@v3
         with:
           java-version: '17'
+          distribution: 'temurin'
       - run: make -C lab build.jdk.case
 
 #  build-ubuntu:
