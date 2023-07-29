@@ -1,5 +1,5 @@
-# 构建 JDK
-jdk_dir:=$(shell realpath "$(shell pwd)/..")
+# 构建 JDK /bin/sh: realpath: command not found
+jdk_dir:=$(shell pwd)/..
 
 java_variant?=server#zero
 build.jdk.case:
