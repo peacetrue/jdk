@@ -1,6 +1,6 @@
 # 构建 JDK
 jdk_dir:=$(shell realpath "$(shell pwd)/..")
-$(info jdk_dir:$(jdk_dir))
+
 java_variant?=server#zero
 build.jdk.case:
 	cd $(jdk_dir)  \
