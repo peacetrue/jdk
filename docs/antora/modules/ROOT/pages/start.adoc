@@ -1,10 +1,11 @@
 = 快速入门
 
-检出 jdk-17+35-custom 分支：
-
-[source%nowrap,bash]
+[source%nowrap,bash,subs=attributes]
 ----
-git clone https://github.com/peacetrue/jdk -b jdk-17+35-custom
-----
+# 检出源码
+git clone https://github.com/peacetrue/{app-name} -b {branch-name}
+# 进入源码目录
+cd {app-name}
+# 构建项目
 
-查看 B 站视频：
+----

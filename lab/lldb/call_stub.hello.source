@@ -1,0 +1,11 @@
+breakpoint set -f java.c -n JavaMain  -C 'expr char $class_target[]="com/github/peacetrue/learn/java/HelloWorld"; char $method_target[]="main"; int $call_stub_executed=0;' -G 1
+breakpoint set -f javaCalls.cpp -l 438 -c 'method->name()->equals($method_target)'
+set set stop-disassembly-display always
+set set stop-disassembly-count 5
+r
+c
+# expr (char*)method->name()->_body
+p/x *(long *)$rax
+# b 0x118000c9e
+# b 0x105cb2d1f
+# c

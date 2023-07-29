@@ -1,5 +1,17 @@
 = 参考指南
-:app-name: jdk
+
+== 源码结构
+
+改动的内容基于 jdk-17+35 标签，并新建 jdk-17+35-custom 分支。
+
+源码结构尽可能保持与 OpenJDK 一致，新增的内容都集中在 docs 和 lab 中。
+
+.变更的结构：
+* .github/workflows
+** submit.yml：JDK 原本的构建方式，全平台构建太慢，所以修改代码忽略了当前分支
+** main.yml：自定义的构建方式，仅构建 macOS 和 Ubuntu 最新版
+* docs：文档目录
+* lab：实验目录，用于测试相关功能
 
 image:https://img.shields.io/github/actions/workflow/status/peacetrue/{app-name}/macOS.yml?branch=master[GitHub Workflow Status (with branch),link="https://github.com/peacetrue/{app-name}/actions"]
 
@@ -265,14 +277,43 @@ thread #2, name = 'java', stop reason = signal SIGSEGV: invalid address (fault a
 ** thread #1: tid = 17400, 0x00007ffff7c91197 libc.so.6`__GI___futex_abstimed_wait_cancelable64 at futex-internal.c:57:12, name = 'java'
 ** thread #2: tid = 17450, 0x00007fffe100064d, name = 'java', stop reason = signal SIGSEGV: invalid address (fault address: 0x0)
 
+== call help()
+
+----
+"Executing help"
+basic
+  pp(void* p)   - try to make sense of p
+  ps()          - print current thread stack
+  pss()         - print all thread stacks
+  pm(int pc)    - print Method* given compiled PC
+  findm(intptr_t pc) - finds Method*
+  find(intptr_t x)   - finds & prints nmethod/stub/bytecode/oop based on pointer into it
+  pns(void* sp, void* fp, void* pc)  - print native (i.e. mixed) stack trace. E.g.
+                   pns($sp, $rbp, $pc) on Linux/amd64 or
+                   pns($sp, $ebp, $pc) on Linux/x86 or
+                   pns($sp, $fp, $pc)  on Linux/AArch64 or
+                   pns($sp, 0, $pc)    on Linux/ppc64 or
+                   pns($sp, $s8, $pc)  on Linux/mips or
+                 - in gdb do 'set overload-resolution off' before calling pns()
+                 - in dbx do 'frame 1' before calling pns()
+misc.
+  flush()       - flushes the log file
+  events()      - dump events from ring buffers
+compiler debugging
+  debug()       - to set things up for compiler debugging
+  ndebug()      - undo debug
+----
+
 == 参考资料
 
-. https://openjdk.org/groups/build/doc/building.html[Building the JDK^]
+. 《虚拟机设计与实现-以JVM为例》
+. 《深入理解Java虚拟机：JVM高级特性与最佳实践（第3版）》
+. https://openjdk.org/groups/build/doc/building.html[OpenJDK: Building the JDK^]
 . https://wiki.openjdk.org/display/HotSpot/PrintAssembly[PrintAssembly^]
-. https://www.progdoc.de
+// . https://www.progdoc.de
 . https://www.progdoc.de/papers/Joker2014/joker2014.html#(1)[Analyzing and Debugging the HotSpot VM at the OS Level^]
 . https://home.cnblogs.com/u/mazhimazhi/[鸠摩（马智）^]
 . https://metebalci.com/blog/demystifying-the-jvm-jvm-variants-cppinterpreter-and-templateinterpreter/[Demystifying the JVM: JVM Variants, Cppinterpreter and TemplateInterpreter^]
-. https://julio-falbo.medium.com/
+// . https://julio-falbo.medium.com/
 . https://julio-falbo.medium.com/understand-jvm-and-jit-compiler-part-1-a94c27d32478[Understand JVM and JIT Compiler — Part 1^]
 

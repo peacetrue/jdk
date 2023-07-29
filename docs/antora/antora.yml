@@ -7,6 +7,7 @@ asciidoc:
     website: https://peacetrue.github.io
     app-group: com.github.peacetrue
     app-name: jdk
+    branch-name: jdk-17+35-custom
 start_page: ROOT:index.adoc
 nav:
   - modules/ROOT/nav.adoc

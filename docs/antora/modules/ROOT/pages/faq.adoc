@@ -12,3 +12,17 @@
 .解决办法：
 * 使用属性替代方法
 * 使用前缀属性
+
+=== error: Command requires a current process.
+
+场景：
+
+    def __lldb_init_module(debugger: lldb.SBDebugger, internal_dict: dict):
+        debugger.HandleCommand("r")
+        debugger.HandleCommand("c") # 此行提示以上错误
+
+=== expr -F -- (long *)entry_point 返回空
+
+断点到 `b javaCalls.cpp:438`，
+从控制台执行 `expr -F -- (long *)entry_point` 正常返回，
+但在脚本中返回空。

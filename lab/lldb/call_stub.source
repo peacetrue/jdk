@@ -1,0 +1,11 @@
+# b javaCalls.cpp:429:7
+b javaCalls.cpp:438
+command script import ../docs/antora/modules/ROOT/examples/lldb/commands.py
+set set stop-disassembly-display always
+set set stop-disassembly-count 5
+r
+c
+# expr method->name()->as_utf8()
+expr (char*)method->name()->_body
+p/x $rax
+# 0x0000000118000c9e

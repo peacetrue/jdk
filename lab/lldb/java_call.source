@@ -1,0 +1,29 @@
+## 双井号注释不会输出到 lldb 控制台
+command script import /usr/local/lib/python3.11/site-packages/yaml
+## -c 相对于 source 目录引用脚本，否则相对于 make 执行目录
+command script import lldb/loggings.py lldb/inspects.py lldb/common.py lldb/java_call.py
+
+# 设置显示汇编代码
+set set stop-disassembly-display always
+set set stop-disassembly-count 5
+
+# 断点到调用 java 方法处
+b javaCalls.cpp:438
+r
+# 未知原因会有一个停顿，使用 c 继续
+c
+# 停止在调用 java 方法处，打印方法名称
+expr (char*)method->name()->_body
+
+# 断点到调用桩入口处
+_b (long *)StubRoutines::_call_stub_entry
+# 断点到 java 方法入口处
+_b (long *)entry_point
+# 执行到调用桩入口处
+c
+bt
+# 执行到 java 方法入口处
+c
+bt
+call pns(&$sp, &$rbp, &$pc)
+

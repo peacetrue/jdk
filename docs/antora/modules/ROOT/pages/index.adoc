@@ -2,30 +2,28 @@
 :website: https://peacetrue.github.io
 :app-group: com.github.peacetrue
 :app-name: jdk
+:branch-name: jdk-17+35-custom
 
 image:https://img.shields.io/github/actions/workflow/status/peacetrue/{app-name}/main.yml?branch=master["GitHub Workflow Status",link="https://github.com/peacetrue/{app-name}/actions"]
 image:https://snyk.io/test/github/peacetrue/{app-name}/badge.svg["Snyk",link="https://app.snyk.io/org/peacetrue"]
-image:https://img.shields.io/testspace/tests/peacetrue/peacetrue:{app-name}/master["test space",link="https://peacetrue.testspace.com/"]
-image:https://img.shields.io/codecov/c/github/peacetrue/{app-name}/master["Codecov",link="https://app.codecov.io/gh/peacetrue/{app-name}"]
-image:https://img.shields.io/nexus/r/{app-group}/{app-name}?label={app-name}&server=https%3A%2F%2Foss.sonatype.org%2F["{app-name}",link="https://search.maven.org/search?q={app-name}"]
 
 //@formatter:off
 
 == 简介（What）
 
-{website}/{app-name}/[{app-name}] 克隆至 https://github.com/peacetrue/jdk.git[官方 JDK^]。
+{website}/{app-name}/[{app-name}] 克隆至 https://github.com/peacetrue/jdk.git[官方 JDK^]，用于学习其源码。
 
 == 背景（Why）
 
-从网上查阅资料，试图学懂 Java  volatile 关键字，看完之后感觉懂了，过段时间又忘了，如此反复多次，终于决定从 JDK 源码中找出答案。
+从网上查阅资料，试图学懂 Java volatile 关键字，看完之后感觉懂了，过段时间又忘了，如此反复多次，终于决定从 JDK 源码中找出答案。
 
 == 用法（How）
 
 检出 jdk-17+35-custom 分支：
 
-[source%nowrap,bash]
+[source%nowrap,bash,subs=attributes]
 ----
-git clone https://github.com/peacetrue/jdk -b jdk-17+35-custom
+git clone https://github.com/peacetrue/{app-name} -b {branch-name}
 ----
 
 == 参与者（Who）

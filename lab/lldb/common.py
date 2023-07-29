@@ -1,16 +1,41 @@
 import inspect
-import re
-import logging
 
-# 配置日志输出格式
-logging.basicConfig(
-    level=logging.DEBUG,  # 设置日志级别为INFO，即只记录INFO级别及以上的日志
-    format='[%(levelname)s] %(message)s',  # 日志格式
-    handlers=[
-        logging.FileHandler('app.log'),  # 将日志写入文件
-        logging.StreamHandler()  # 在控制台输出日志
-    ]
-)
+import inspects
+import re
+import lldb
+import loggings
+
+logger = loggings.get_logger(__name__)
+
+
+def handle_command(command: str, debugger=lldb.debugger):
+    # 执行命令并返回
+    logger.debug(f"(lldb) {command}")
+    debugger.HandleCommand(command)
+
+
+def handle_return_command(command: str,
+                          interpreter=lldb.debugger.GetCommandInterpreter(),
+                          result=lldb.SBCommandReturnObject()) -> str:
+    # 执行命令并返回
+    logger.debug(f"(lldb) {command}")
+    interpreter.HandleCommand(command, result)
+    result = result.GetOutput().rstrip("\n")
+    logger.debug(f"result: {result}")
+    return result
+
+
+def register_commands(module, debugger=lldb.debugger):
+    logger.info(f"register commands")
+    commands = [function.__name__ for function in inspects.get_command_functions(module)]
+    logger.info(f"commands.length: {len(commands)}")
+    for command in commands:
+        register_command(command, module.__name__, debugger)
+
+
+def register_command(command: str, module: str = __name__, debugger=lldb.debugger):
+    handle_command(f"command script add -o -f {module}.{command} {command}", debugger)
+
 
 # command script import docs/antora/modules/ROOT/examples/lldb/commands.py
 
@@ -18,18 +43,9 @@ class_object = "java/lang/Object"
 class_hello = "com/github/peacetrue/learn/java/HelloWorld"
 method_main = "main"
 
-
-def __lldb_init_module(debugger, internal_dict):
-    register_commands(debugger)
-    init_breakpoints(debugger)
-
-
-def register_commands(debugger):
-    # 注册命令
-    commands = [function.__name__ for function in command_functions()]
-    debugger.HandleCommand(f'shell echo "register commands: {", ".join(commands)}"')
-    for command in commands:
-        debugger.HandleCommand("command script add -o -f commands.%s %s" % (command, command))
+# def __lldb_init_module(debugger, internal_dict):
+#     register_commands(debugger)
+#     init_breakpoints(debugger)
 
 
 """
@@ -59,7 +75,8 @@ def init_breakpoints(debugger):
     # _b_s(debugger, "-n generate_method_entry")  # 根据方法种类生成解释器入口
     # _b_s(debugger, "-n set_entry_for_kind", "-c 'entry!=NULL'")  # 根据方法种类设置解释器入口
     # _b_s(debugger, "-n set_interpreter_entry", "-c 'entry!=NULL'")  # 设置方法解释器入口
-    _b_s(debugger, "-f javaCalls.cpp", "-n call_helper", "-l 438", "-c 'method->name()->equals($method_target)'")  # 调用 java 方法
+    _b_s(debugger, "-f javaCalls.cpp", "-n call_helper", "-l 438")  # 调用 java 方法
+    # _b_s(debugger, "-f javaCalls.cpp", "-n call_helper", "-l 438", "-c 'method->name()->equals($method_target)'")  # 调用 java 方法
     # _b_s(debugger, "-f stubGenerator_zero.cpp", "-n build", "-l 319", "-C 'var *stack'")  # 创建栈帧
     # _b_s(debugger, "-f stubGenerator_zero.cpp", "-n call_stub", "-x 3",
     #      "-c 'call_wrapper->_callee_method->name()->equals($method_target)'",
@@ -105,30 +122,20 @@ def breakpoint_set(debugger, *options):
     # 如果指定了行号、源码则方法名无效，且是非法的选项组合，需要修正
     if any(option.startswith(('-p', '-l')) for option in options):
         options = [option for option in options if not option.startswith('-n')]
-    handle_command(debugger, f"breakpoint set {' '.join(options)}")
+    handle_command(f"breakpoint set {' '.join(options)}", debugger)
 
 
-def handle_command(debugger, command):
-    # 执行命令并返回
-    logging.debug(f"执行命令: {command}")
-    debugger.HandleCommand(command)
-
-
-def handle_return_command(interpreter, command, result):
-    # 执行命令并返回
-    logging.debug(f"执行命令: {command}")
-    interpreter.HandleCommand(command, result)
-    return result.GetOutput().rstrip("\n")
-
-
-def expr_f(interpreter, command: str, result) -> str:
-    value = handle_return_command(interpreter, f"expr -F -- {command}", result)
-    return re.match(r"\$\d+ = (.*)", value).group(1)
+def expr_f(command: str,
+           interpreter=lldb.debugger.GetCommandInterpreter(),
+           result=lldb.SBCommandReturnObject()) -> str:
+    # $1 = 0x0000000118000c9e -> 0x0000000118000c9e
+    value = handle_return_command(f"expr -F -- {command}", interpreter, result)
+    return re.match(r"\$\d+ = (.*)", value).group(1) if value else value
 
 
 def expr_o(interpreter, command: str, result) -> str:
     # 执行表达式命令。expr ik，默认输出格式为：(InstanceMirrorKlass *) $256 = 0x00000007c0042868\n，使用 -O 仅输出值 0x00000007c0042868\n
-    return handle_return_command(interpreter, f"expr -O -- {command}", result)
+    return handle_return_command(f"expr -O -- {command}", interpreter, result)
 
 
 def reload(debugger, command, result, internal_dict):
@@ -157,7 +164,7 @@ max_count = 20
 
 def fun_dump(interpreter, command, result, dump_dir=lldb_dir, suffix=".txt"):
     # 转储命令执行的结果
-    content = handle_return_command(interpreter, command, result)
+    content = handle_return_command(command, interpreter, result)
     with open(f"{dump_dir}/{'-'.join(command.lstrip('help ').split())}{suffix}", "w") as file:
         file.write(content)
 
@@ -221,7 +228,7 @@ def class_fields(debugger, command, result, internal_dict):
     # 查看字段信息
     class_var_expr = command if command else "this"
     interpreter = debugger.GetCommandInterpreter()  # 获取命令解释器，用于执行命令
-    field_count = expr_f(interpreter, f"{class_var_expr}->java_fields_count()", result)
+    field_count = expr_f(f"{class_var_expr}->java_fields_count()", interpreter, result)
     field_count = int(field_count)
     print(f"field_count: {field_count}")
     for index in range(0, min(field_count, max_count)):
@@ -239,8 +246,8 @@ def class_fields(debugger, command, result, internal_dict):
 def class_methods(debugger, command, result, internal_dict):
     methods_var_expr = command if command else "methods()"
     interpreter = debugger.GetCommandInterpreter()
-    method_count = expr_f(interpreter, f"{methods_var_expr}->length()", result)
-    logging.info("method_count: ", method_count)
+    method_count = expr_f(f"{methods_var_expr}->length()", interpreter, result)
+    logger.info("method_count: ", method_count)
     for index in range(0, min(int(method_count), max_count)):
         class_method(interpreter, f"{methods_var_expr}->data()[{index}]", index, result)
     result.Clear()
@@ -251,15 +258,15 @@ def class_method(interpreter, method_var_expr, index, result):
     method_signature = expr_o(interpreter, cmd, result)
     cmd = f"{method_var_expr}->name()->as_C_string()"
     method_name = expr_o(interpreter, cmd, result)
-    logging.info(f"methods[{index}]: {method_name} {method_signature}")
+    logger.info(f"methods[{index}]: {method_name} {method_signature}")
 
 
 def class_vmethods(debugger, command: str, result, internal_dict):
     class_var_expr = command if command else "this"
-    logging.info(f"查看 InstanceKlass: {class_var_expr} 的虚方法")
+    logger.info(f"查看 InstanceKlass: {class_var_expr} 的虚方法")
     interpreter = debugger.GetCommandInterpreter()
-    count = expr_f(interpreter, f"{class_var_expr}->_vtable_len", result)
-    logging.info(f"vmethods.count: {count}")
+    count = expr_f(f"{class_var_expr}->_vtable_len", interpreter, result)
+    logger.info(f"vmethods.count: {count}")
     for index in range(0, min(int(count), max_count)):
         class_method(interpreter, f"{class_var_expr}->method_at_vtable({index})", index, result)
     result.Clear()

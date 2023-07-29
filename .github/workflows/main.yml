@@ -1,0 +1,31 @@
+name: build
+
+on:
+  push:
+    branches: [ jdk-17+35-custom ]
+  # 除了推送代码外，还可以手动触发此 Workflow
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up JDK 17
+        uses: actions/setup-java@v2
+        with:
+          java-version: '17'
+      - run: make -C lab build.jdk.case
+
+#  build-ubuntu:
+#    runs-on: ubuntu-latest
+#    env:
+#      bochs_display_library: nogui
+#      bochs_command_mode: run
+#    steps:
+#      - uses: actions/checkout@v3
+#      - run: make prepare.check.case
+#      - run: make bochs.hello.case

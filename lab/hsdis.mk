@@ -1,16 +1,17 @@
-# 编译 hsdis：HotSpot Disassembler 反汇编器
-LIB_SUFFIX=$(if $(filter $(OS),$(OS_MAC)),dylib,so)
+# 编译 hsdis：HotSpot Disassembler 反汇编器。如果执行一遍报错，再次执行
+# https://wiki.openjdk.org/display/HotSpot/PrintAssembly
+lib_suffix=$(if $(filter $(os),$(os_mac)),dylib,so)
 GDB_FOLDER=$(HOME)/Documents/sourceware
-GDB_PATH=$(GDB_FOLDER)/binutils-gdb
-SRC_HSDIS_LIB=$(JDK_DIR)/src/utils/hsdis/build/$(java_os)-amd64/hsdis-amd64.$(LIB_SUFFIX)
-DST_HSDIS_LIB=$(JDK_DIR)/build/$(java_os)-x86_64-$(java_variant)-slowdebug/jdk/lib/server/hsdis-amd64.$(LIB_SUFFIX)
-$(GDB_PATH):
+gdb_path=$(GDB_FOLDER)/binutils-gdb
+src_hsdis_lib=$(jdk_dir)/src/utils/hsdis/build/$(java_os)-amd64/hsdis-amd64.$(lib_suffix)
+dst_hsdis_lib=$(jdk_dir)/build/$(java_os)-x86_64-$(java_variant)-slowdebug/jdk/lib/server/hsdis-amd64.$(lib_suffix)
+$(gdb_path):
 	mkdir -p $(GDB_FOLDER)   \
 	&& cd $(GDB_FOLDER) 		\
 	&& git clone git://sourceware.org/git/binutils-gdb.git -b users/roland/2.31/gold-narrowing-switch
-$(SRC_HSDIS_LIB): $(GDB_PATH)
+$(src_hsdis_lib): $(gdb_path)
 	touch $</bfd/doc/bfd.info
-	cd $(JDK_DIR)/src/utils/hsdis && make all64 BINUTILS=$(GDB_PATH)
-$(DST_HSDIS_LIB): $(SRC_HSDIS_LIB)
+	cd $(jdk_dir)/src/utils/hsdis && make all64 BINUTILS=$(gdb_path)
+$(dst_hsdis_lib): $(src_hsdis_lib)
 	cp $< $@
-hsdis.case: $(DST_HSDIS_LIB);
+hsdis.case: $(dst_hsdis_lib);
