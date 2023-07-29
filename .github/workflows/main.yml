@@ -24,6 +24,8 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
+      - run: sudo apt-get update
+      - run: sudo apt-get install libx11-dev libxext-dev libxrender-dev libxtst-dev libxt-dev
       - run: make -C lab build.jdk.case
 
   build-macos:
