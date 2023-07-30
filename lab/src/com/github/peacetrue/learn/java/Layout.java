@@ -11,7 +11,7 @@ public class Layout implements A {
 
     public static int static_field_count = 3;
     public static final int static_final_field_count = 1;
-    public static HelloWorld static_field_oop = new HelloWorld();
+    public static Layout static_field_oop = new Layout();
 
     public int member_field_count = 2;
     public HelloWorld member_field_oop;
