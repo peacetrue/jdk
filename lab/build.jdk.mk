@@ -15,7 +15,8 @@ build.jdk.linux.install:
 	# configure: error: Could not find alsa!
 	sudo apt-get install libasound2-dev -y
 	#sudo apt-get install libffi-dev -y
-
+  	# sudo apt install openjdk-17-jdk
+  	# sudo apt install make autoconf gcc g++ -y
 build.jdk.configure.help:
 	cd $(jdk.dir) && bash configure -help
 build.jdk.configure:
