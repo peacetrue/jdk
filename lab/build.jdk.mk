@@ -29,7 +29,10 @@ build.jdk.images:
 	cd $(jdk.dir) && make images CONF=$(jdk.build.dir)
 build.jdk.verify:
 	cd $(jdk.dir) && $(jdk.build.bin.dir)/java -version
-build.jdk.server.case: build.jdk.configure build.jdk.images build.jdk.verify;
+build.jdk: build.jdk.configure build.jdk.images build.jdk.verify;
+build.jdk.server.case: $(if $(is_linux),build.jdk.linux.install,) build.jdk;
 build.jdk.zero.case: java_variant=zero
 build.jdk.zero.case: build.jdk.server.case;
-build.jdk.case: $(if $(is_linux),build.jdk.linux.install,) build.jdk.server.case build.jdk.zero.case;
+build.jdk.case: $(if $(is_linux),build.jdk.linux.install,)
+	make build.jdk java_variant=server
+	make build.jdk java_variant=zero
