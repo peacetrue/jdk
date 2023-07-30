@@ -3,8 +3,7 @@ name: build
 
 on:
   push:
-    branches:
-      - "jdk-17\+35-custom"
+    branches: [ jdk-17*-custom ]
   # 除了推送代码外，还可以手动触发此 Workflow
   workflow_dispatch:
 

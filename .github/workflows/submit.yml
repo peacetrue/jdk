@@ -5,7 +5,7 @@ on:
     branches-ignore:
       - master
       - pr/*
-      - "jdk-17\+35-custom"
+      - jdk-17*-custom
   workflow_dispatch:
     inputs:
       platforms:
