@@ -5,9 +5,4 @@ override os_mac:=Darwin#常量
 os_name:=$(if $(filter $(os),$(os_linux)),linux,macosx)
 override is_linux:=$(filter $(os),$(os_linux))
 override is_mac:=$(filter $(os),$(os_mac))
-
-os.vars:
-	@echo "os: '$(os)'"
-	@echo "os_name: '$(os_name)'"
-	@echo "is_linux: '$(is_linux)'"
-	@echo "is_mac: '$(is_mac)'"
+debug.vars+=os os_linux os_mac os_name is_linux is_mac

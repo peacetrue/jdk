@@ -1,10 +1,11 @@
 include os.mk
 include build.common.mk
 include build.jdk.mk
-include hsdis.mk
+include build.hsdis.mk
 include java.mk
 include lldb.mk
 include local.mk
+include debug.mk
 
 
 EXEC_EXTENSION=.class
@@ -45,17 +46,7 @@ sleep.graffle.cases:
 	    make -C $(graffle_dir) demo-memory.call.case script_argument=$(shell pwd)/$(BUILD)/sleep-$${size}M/sleep.maps; \
     done
 
-
-vars:
-	$(info BUILD:'$(BUILD)')
-	$(info OS:'$(OS)')
-	$(info java_os:'$(java_os)')
-	$(info java_variant:'$(java_variant)')
-	$(info java_bin_$(OS_LINUX):'$(java_bin_$(OS_LINUX))')
-	$(info java_bin_$(OS_MAC):'$(java_bin_$(OS_MAC))')
-	$(info java_bin:'$(java_bin)')
-	$(info workingDir:'$(workingDir)')
-
+include debug.mk
 
 
 

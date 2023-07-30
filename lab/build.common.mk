@@ -1,9 +1,11 @@
 # 构建通用文件，声明构建目录的创建和清除
 override src:=src#源始文件目录，作为常量使用，请勿改变该值
 SRC:=$(src)#作为变量使用
+debug.vars+=src SRC
 
 override build:=build#目标文件目录，作为常量使用，请勿改变该值
 BUILD:=$(build)#作为变量使用
+debug.vars+=build BUILD
 
 mkdir/%:; mkdir -p $*
 mkdir: mkdir/$(BUILD);

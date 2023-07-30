@@ -1,16 +1,17 @@
 name: build
 
-#TODO 指定分支名无效，忽略分支名有效，似乎分支名有鬼
 on:
   push:
-#    you may only define one of `branches` and `branches-ignore` for a single event
-#    branches:
-#      - jdk-17+35-custom
+    # you may only define one of `branches` and `branches-ignore` for a single event
+    #branches:
+    #  - jdk-17+35-custom
+    # TODO 指定分支名无效，忽略分支名有效，似乎分支名有什么语法规范
     branches-ignore:
       - jdk-17+35-custom
   # 除了推送代码外，还可以手动触发此 Workflow
   workflow_dispatch:
 
+# 资源库读取权限
 permissions:
   contents: read
 
@@ -19,13 +20,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      #- run: sudo apt install openjdk-17-jdk
       - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
           distribution: 'temurin'
-      - run: sudo apt-get update
-      - run: sudo apt-get install libx11-dev libxext-dev libxrender-dev libxtst-dev libxt-dev
+      #- run: sudo apt install make autoconf gcc g++ -y
       - run: make -C lab build.jdk.case
 
   build-macos:
